@@ -1,35 +1,100 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState } from 'react';
+import abi from './abi.json';  
+import { ethers } from 'ethers';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import './App.css';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [depositAmount, setDepositAmount] = useState('');
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [balance, setBalance] = useState('0');
+  const contractAddress = '0x22ee52a264e34cd11c709526ffef469dce2ffa95';
+
+  async function requestAccounts() {
+    await window.ethereum.request({ method: 'eth_requestAccounts' });
+  }
+
+  async function getBalance() {
+    if (typeof window.ethereum !== 'undefined') {
+      await requestAccounts();
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const contract = new ethers.Contract(contractAddress, abi, provider);
+      try {
+        const currentBalance = await contract.getBalance();
+        setBalance(currentBalance.toString());
+        toast.success('Balance updated successfully!');
+      } catch (err) {
+        toast.error('Failed to get balance: ' + err.message);
+      }
+    }
+  }
+
+  async function handleDeposit() {
+    if (typeof window.ethereum !== 'undefined') {
+      await requestAccounts();
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(contractAddress, abi, signer);
+      try {
+        const tx = await contract.deposit(depositAmount);
+        toast.info('Deposit transaction submitted...');
+        await tx.wait();
+        toast.success('Deposit successful!');
+        getBalance();
+        setDepositAmount('');
+      } catch (err) {
+        toast.error('Deposit failed: ' + err.message);
+      }
+    }
+  }
+
+  async function handleWithdraw() {
+    if (typeof window.ethereum !== 'undefined') {
+      await requestAccounts();
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(contractAddress, abi, signer);
+      try {
+        const tx = await contract.withdraw(withdrawAmount);
+        toast.info('Withdrawal transaction submitted...');
+        await tx.wait();
+        toast.success('Withdrawal successful!');
+        getBalance();
+        setWithdrawAmount('');
+      } catch (err) {
+        toast.error('Withdrawal failed: ' + err.message);
+      }
+    }
+  }
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <div style={{ padding: '20px' }}>
+      <ToastContainer position="top-right" autoClose={5000} />
+      <h2>Balance: {balance}</h2>
+      <button onClick={getBalance} style={{ margin: '5px' }}>Get Balance</button>
+      <br />
+      
+      <input 
+        type="number" 
+        value={depositAmount}
+        onChange={(e) => setDepositAmount(e.target.value)}
+        placeholder="Amount to deposit"
+        style={{ margin: '5px' }}
+      />
+      <button onClick={handleDeposit} style={{ margin: '5px' }}>Deposit</button>
+      <br />
+      
+      <input 
+        type="number"
+        value={withdrawAmount}
+        onChange={(e) => setWithdrawAmount(e.target.value)}
+        placeholder="Amount to withdraw"
+        style={{ margin: '5px' }}
+      />
+      <button onClick={handleWithdraw} style={{ margin: '5px' }}>Withdraw</button>
+    </div>
+  );
 }
 
-export default App
+export default App;
